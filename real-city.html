@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b131e">
+  <title>Astana Digital Twin · Executive Command Center</title>
+  <link rel="preconnect" href="https://tiles.openfreemap.org">
+  <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+    :root{color-scheme:dark;--bg:#0b131e;--panel:#101926;--panel2:#111d2b;--line:rgba(0,210,255,.15);--cyan:#00d2ff;--green:#36d6a3;--red:#ff536d;--amber:#ffbf5b;--text:#edf5f8;--muted:#8ba1ad;--mono:"DM Mono",monospace;--shadow:0 16px 44px rgba(0,0,0,.3)}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;background:var(--bg);color:var(--text);font:13px Manrope,Arial,sans-serif}
+    button,input,select{font:inherit}
+    button{color:inherit}
+    .app{height:100dvh;min-height:680px;display:grid;grid-template-rows:68px minmax(0,1fr);overflow:hidden;background:radial-gradient(ellipse at 48% -18%,rgba(0,210,255,.12),transparent 42%),var(--bg)}
+    .top{display:flex;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid var(--line);background:rgba(11,19,30,.92);z-index:5}
+    .brand{min-width:275px}.brand-title{font-size:16px;font-weight:800;letter-spacing:.045em}.brand-title span{color:var(--cyan)}.brand-sub{font:9px var(--mono);letter-spacing:.17em;color:#84a0ad;margin-top:4px}
+    .city-label{font-size:11px;color:#b4c8d1;border-left:1px solid #293b49;padding-left:16px}
+    .chips{display:flex;gap:7px;align-items:center;margin-left:auto;overflow:hidden}
+    .chip{white-space:nowrap;border:1px solid var(--line);background:rgba(16,25,38,.78);border-radius:999px;padding:7px 10px;color:#b9cbd3;font:9px var(--mono)}
+    .chip.live{border-color:rgba(54,214,163,.35);color:#8df0cc}.chip .dot{color:var(--green);margin-right:5px}
+    .body{min-height:0;display:grid;grid-template-columns:285px minmax(400px,1fr) 318px}
+    .side{min-width:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#263a47 transparent;background:rgba(16,25,38,.88);backdrop-filter:blur(14px)}
+    .left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line);padding:16px}
+    .section{padding:15px 16px;border-bottom:1px solid rgba(135,177,193,.11)}
+    .eyebrow{font:9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#8ba5b1}
+    .city{font-size:20px;font-weight:800;margin:5px 0 2px}.muted{font-size:10px;color:var(--muted);line-height:1.55}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}
+    .stat{padding:9px 10px;border:1px solid rgba(0,210,255,.1);border-radius:9px;background:rgba(8,16,26,.48)}
+    .stat small{display:block;color:var(--muted);font-size:9px;margin-bottom:4px}.stat b{font-size:11px}
+    .mode-row{display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px}
+    .mode-select,.select{background:#0b1521;color:var(--text);border:1px solid #2a4150;border-radius:7px;padding:7px 9px;font-size:10px}
+    .field{margin-top:11px}.field-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;font-size:10px}
+    .field-head b{font:10px var(--mono);color:#e6f3f6}.field-head small{font:9px var(--mono);color:var(--muted)}
+    input[type=range]{width:100%;height:4px;accent-color:var(--cyan);cursor:pointer}
+    .budget-total{display:flex;justify-content:space-between;align-items:end;margin:11px 0 8px}
+    .budget-total strong{font:700 22px var(--mono);color:#f6fbff}.budget-total small{font:9px var(--mono);color:var(--muted)}
+    .meter{height:5px;background:#233442;border-radius:99px;overflow:hidden}.meter i{display:block;height:100%;width:25%;background:linear-gradient(90deg,var(--cyan),var(--green));transition:width .2s}
+    .proj-list{margin-top:8px}.project{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(135,177,193,.1);cursor:pointer}
+    .project:last-child{border-bottom:0}.project input{accent-color:var(--green);margin:0}.project b{font-size:10px}.project small{display:block;color:var(--muted);font:9px var(--mono);margin-top:3px}.project .cost{font:9px var(--mono);color:#a9c2ce}
+    .limit-note{min-height:14px;color:var(--amber);font-size:9px;margin-top:3px}
+    .control-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .primary{width:100%;border:0;border-radius:8px;padding:10px;background:linear-gradient(90deg,#27c6d8,#41d7a3);color:#061a20;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(0,210,255,.12);margin-top:12px}
+    .primary:hover{filter:brightness(1.08)}
+    .center{min-width:0;min-height:0;display:grid;grid-template-rows:minmax(300px,1fr) 204px;gap:0}
+    .mapbox{position:relative;min-height:0;background:#0c1722;overflow:hidden}
+    #map{position:absolute;inset:0}
+    .map-offline{position:absolute;z-index:3;inset:0;display:none;place-content:center;text-align:center;padding:30px;background:linear-gradient(135deg,#0b131e,#112231);color:#d8e8ed}
+    .map-offline.show{display:grid}.map-offline b{font-size:17px}.map-offline span{max-width:420px;color:var(--muted);font-size:11px;line-height:1.7;margin-top:9px}
+    .map-hud{position:absolute;z-index:2;top:13px;left:13px;right:13px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;pointer-events:none}
+    .hud-stack{display:flex;flex-wrap:wrap;gap:7px}.hud-pill{border:1px solid rgba(0,210,255,.19);border-radius:8px;background:rgba(8,17,27,.88);padding:8px 10px;box-shadow:var(--shadow);font:9px var(--mono);color:#c5d8df}
+    .hud-pill strong{color:var(--cyan)}.map-tools{display:flex;gap:6px;pointer-events:auto}.lens-control{pointer-events:auto}.lens-control select{border:0;background:transparent;color:var(--cyan);font:9px var(--mono);outline:0;cursor:pointer}.lens-control option{background:#101926;color:#edf5f8}
+    .tool-btn{border:1px solid rgba(0,210,255,.18);background:rgba(8,17,27,.9);color:#d7e9ef;border-radius:7px;padding:8px 9px;font:9px var(--mono);cursor:pointer}
+    .tool-btn:hover,.tool-btn.active{border-color:var(--cyan);color:#a7efff}
+    .map-bottom{position:absolute;z-index:2;left:13px;bottom:12px;right:13px;display:flex;justify-content:space-between;align-items:end;gap:10px;pointer-events:none}
+    .legend{max-width:260px;min-width:190px;background:rgba(8,17,27,.94);border:1px solid rgba(0,210,255,.24);border-radius:8px;padding:10px 12px;font-size:9px;line-height:1.6;color:#bdd0d7}
+    .legend b{display:block;font:9px var(--mono);color:#dff8ff;letter-spacing:.08em;margin-bottom:3px}
+    .legend small{color:var(--muted)}.legend-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}.legend-scale{height:7px;border-radius:8px;margin:6px 0 3px;background:linear-gradient(90deg,#16c6f5,#f8363c)}.legend-range{display:flex;justify-content:space-between;color:#d3e3e8;font:8px var(--mono)}
+    .map-hint{border-radius:7px;background:rgba(8,17,27,.78);padding:7px 9px;color:#9cb1bc;font:8px var(--mono)}
+    .district-name-marker{padding:5px 8px;border:1px solid rgba(0,210,255,.82);border-radius:6px;background:rgba(7,17,26,.94);box-shadow:0 0 15px rgba(0,210,255,.2);color:#e8faff;font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #07111a}
+    .monitor{min-height:0;overflow:auto;padding:12px 15px 10px;background:rgba(13,23,34,.97);border-top:1px solid var(--line)}
+    .monitor-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .monitor h2{font-size:12px;margin:0}.source-badge{font:8px var(--mono);color:#9db2be}
+    .table-wrap{overflow:auto;border:1px solid rgba(0,210,255,.12);border-radius:8px}
+    table{border-collapse:collapse;width:100%;min-width:590px;font-size:9px}
+    th{text-align:left;color:#8ba5b1;background:#111d2b;font:8px var(--mono);letter-spacing:.04em;padding:8px 9px;position:sticky;top:0}
+    td{padding:7px 9px;border-top:1px solid rgba(135,177,193,.09);white-space:nowrap;color:#d4e1e6}
+    tbody tr{cursor:pointer}tbody tr:hover,tbody tr.focused{background:rgba(0,210,255,.075)}
+    .qol{color:#81edc5;font:10px var(--mono)}.bad{color:#ff8a96}.good{color:#80e6bd}
+    .right-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+    .right-heading h2{font-size:15px;margin:4px 0 0}.status{font:8px var(--mono);color:var(--amber);white-space:nowrap}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border:1px solid rgba(0,210,255,.12);border-radius:9px;background:#0b1520;margin-bottom:12px}
+    .tab{border:0;border-radius:6px;padding:7px 3px;background:transparent;color:#8da5b0;font-size:8px;cursor:pointer}
+    .tab.active{background:#142536;color:#a5eaff;box-shadow:inset 0 0 0 1px rgba(0,210,255,.17)}
+    .pane{display:none}.pane.active{display:block}
+    .card{padding:11px 12px;border:1px solid rgba(0,210,255,.12);border-radius:9px;background:rgba(9,17,27,.6);margin-bottom:9px}
+    .card-title{font-size:10px;font-weight:800}.card p{font-size:9px;line-height:1.6;color:#9fb2bc;margin:6px 0 0}
+    .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .metric{padding:10px;border-radius:8px;border:1px solid rgba(0,210,255,.1);background:#0c1723}
+    .metric span{display:block;color:var(--muted);font:8px var(--mono);margin-bottom:5px}.metric b{font:700 17px var(--mono)}
+    .metric em{display:block;font:8px var(--mono);color:#87dcbf;font-style:normal;margin-top:3px}
+    .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid rgba(135,177,193,.1);font-size:9px;color:#b9c9cf}
+    .row b{font:9px var(--mono);color:#e9f3f6}
+    .pay-list,.case-list{display:grid;gap:7px}.pay,.case{padding:9px;border-radius:8px;border:1px solid rgba(135,177,193,.12);background:rgba(9,17,27,.55)}
+    .pay-top,.case-top{display:flex;justify-content:space-between;gap:8px;align-items:start}.pay b,.case b{font-size:9px}.pay small,.case small{display:block;margin-top:4px;color:var(--muted);font:8px var(--mono);line-height:1.45}
+    .amount{color:#a4edcf;font:9px var(--mono);white-space:nowrap}.status-tag{font:7px var(--mono);padding:3px 5px;border:1px solid rgba(255,191,91,.3);border-radius:99px;color:#ffd181}
+    .case{cursor:pointer}.priority-critical{border-left:2px solid var(--red)}.priority-high{border-left:2px solid var(--amber)}.priority-medium{border-left:2px solid var(--cyan)}
+    .recommend{border-left:2px solid var(--green);background:rgba(20,48,43,.45)}
+    .tiny{font:8px var(--mono);color:var(--muted);line-height:1.55}
+    .toast{position:fixed;z-index:20;left:50%;bottom:18px;transform:translate(-50%,15px);opacity:0;pointer-events:none;transition:.2s;padding:10px 14px;border:1px solid rgba(0,210,255,.3);border-radius:8px;background:#0b1723;color:#e5f5f8;font-size:10px;box-shadow:var(--shadow);max-width:90vw}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    .maplibregl-popup-content{background:#101d2a;color:#eaf4f8;border:1px solid rgba(0,210,255,.25);border-radius:9px;padding:11px 13px;box-shadow:var(--shadow);font:10px Manrope,sans-serif}
+    .maplibregl-popup-tip{border-top-color:#101d2a!important;border-bottom-color:#101d2a!important}
+    .maplibregl-ctrl-group{background:#101d2a!important;border:1px solid rgba(0,210,255,.2)!important}.maplibregl-ctrl button span{filter:invert(1)}
+    @media(max-width:1120px){.body{grid-template-columns:260px minmax(360px,1fr)}.right{grid-column:1/-1;display:grid;grid-template-columns:220px 1fr;gap:12px;border-left:0;border-top:1px solid var(--line);max-height:310px}.right-heading{grid-column:1/-1;margin-bottom:0}.tabs{grid-column:1}.pane-wrap{grid-column:2;overflow:auto}.center{grid-row:1}.app{grid-template-rows:68px minmax(0,1fr)}.body{grid-template-rows:minmax(450px,1fr) 310px}.left{grid-row:1/3}.center{grid-column:2;grid-row:1}.right{grid-column:2;grid-row:2}}
+    @media(max-width:900px){.app{height:auto;min-height:100dvh;overflow:visible;grid-template-rows:auto auto}.top{min-height:86px;height:auto;flex-wrap:wrap;gap:8px;padding:8px 12px}.brand{min-width:230px}.city-label{display:none}.chips{flex:0 0 100%;order:3;width:100%;margin:0;overflow-x:auto;padding-bottom:2px}.body{grid-template-rows:minmax(450px,calc(100dvh - 390px)) minmax(310px,auto)}.right{max-height:none}}
+    @media(max-width:760px){.app{height:auto;min-height:100dvh;overflow:visible;grid-template-rows:auto auto}.top{min-height:68px;padding:10px 12px;flex-wrap:wrap;gap:8px}.brand{min-width:unset;flex:1}.brand-title{font-size:13px}.brand-sub{font-size:8px}.city-label{display:none}.chips{order:3;width:100%;margin:0;overflow-x:auto}.chip{font-size:8px;padding:6px 8px}.body{display:flex;flex-direction:column;min-height:0}.center{order:1;display:flex;flex-direction:column}.mapbox{height:57vh;min-height:390px;order:0}.monitor{height:215px;flex:none;order:1}.left{order:2;overflow:visible;border:0;border-top:1px solid var(--line)}.right{order:3;display:block;max-height:none;border:0;border-top:1px solid var(--line);padding:14px}.tabs{margin-bottom:10px}.pane-wrap{overflow:visible}.map-bottom{bottom:8px}.map-hint{display:none}}
+    @media(max-width:420px){.metric-grid{grid-template-columns:1fr 1fr}.hud-pill{font-size:8px;padding:7px}.tool-btn{font-size:8px;padding:7px}.mapbox{min-height:360px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand"><div class="brand-title">ASTANA <span>DIGITAL TWIN</span></div><div class="brand-sub">CITY BUILDER • SCENARIO MODE</div></div>
+      <div class="city-label">Пульт управления городом　/　<b>Астана</b></div>
+      <div class="chips">
+        <span class="chip live"><span class="dot">●</span>СИМУЛЯЦИЯ АКТИВНА</span>
+        <span class="chip">📍 5 районов</span>
+        <span class="chip">📊 Модель: прозрачная</span>
+        <span class="chip" id="source-chip">🗺️ OSM · Demo</span>
+      </div>
+    </header>
+    <main class="body">
+      <aside class="side left">
+        <section class="section">
+          <div class="eyebrow">Цифровой двойник · сценарный режим</div><div class="city">Астана</div><div class="muted">Модель районных показателей · демонстрационные оценки</div>
+          <div class="stats">
+            <div class="stat"><small>Городская геометрия</small><b>OpenStreetMap</b></div>
+            <div class="stat"><small>Транспортная модель</small><b id="transport-source">Сценарная</b></div>
+            <div class="stat"><small>Население*</small><b>1,49 млн</b></div>
+            <div class="stat"><small>Горизонт</small><b id="horizon-label">3 года</b></div>
+          </div>
+        </section>
+        <section class="section">
+          <div class="eyebrow">Панель мэра · бюджет города</div>
+          <div class="mode-row"><span class="muted">Режим ввода</span><select class="mode-select" id="budget-mode" aria-label="Режим ввода бюджета"><option value="percent">Доли, %</option><option value="amount">Млрд ₸</option></select></div>
+          <div class="budget-total"><div><small class="eyebrow">Распределено</small><br><strong id="budget-total">142.5</strong> <small>млрд ₸</small></div><small>городской план<br>142.5 млрд ₸</small></div>
+          <div class="meter"><i id="budget-meter"></i></div>
+          <div id="budget-controls"></div>
+          <div class="muted" style="margin-top:8px">Доли автоматически нормализуются до 100%.</div>
+        </section>
+        <section class="section">
+          <div class="eyebrow">Пакет решений · инвестиции</div>
+          <div class="budget-total"><div><small>Выбрано</small><br><strong id="project-total">30.0</strong> <small>млрд ₸</small></div><small>лимит<br>120 млрд ₸</small></div>
+          <div class="meter"><i id="project-meter"></i></div>
+          <div class="proj-list" id="project-list">
+            <label class="project"><input type="checkbox" checked data-project="brt"><span><b>BRT · выделенные полосы</b><small>Транспорт · Есиль</small></span><span class="cost">18 млрд</span></label>
+            <label class="project"><input type="checkbox" checked data-project="school"><span><b>Школа в Нуре</b><small>Соцсфера · Нура</small></span><span class="cost">12 млрд</span></label>
+            <label class="project"><input type="checkbox" data-project="park"><span><b>Парк и зелёный коридор</b><small>Экология · Алматы</small></span><span class="cost">9 млрд</span></label>
+            <label class="project"><input type="checkbox" data-project="clinic"><span><b>Поликлиника в Нуре</b><small>Соцсфера · Нура</small></span><span class="cost">15 млрд</span></label>
+          </div>
+          <div class="limit-note" id="project-limit"></div>
+          <div class="control-pair">
+            <label class="muted">Район в фокусе<select class="select" id="district-select" style="width:100%;margin-top:4px"></select></label>
+            <label class="muted">Горизонт<select class="select" id="horizon-select" style="width:100%;margin-top:4px"><option value="1">1 год</option><option value="3" selected>3 года</option><option value="5">5 лет</option></select></label>
+          </div>
+          <button class="primary" id="run-scenario">▶　Пересчитать сценарий</button>
+        </section>
+        <section class="section">
+          <div class="eyebrow">Городские GIS-слои</div>
+          <div class="layers">
+            <button class="layer tool-btn active" data-layer="traffic">〰 Трафик</button>
+            <button class="layer tool-btn" data-layer="transit">↗ Коридоры</button>
+            <button class="layer tool-btn" data-layer="schools">⌂ Объекты</button>
+            <button class="layer tool-btn" data-layer="green">✳ Зелень</button>
+            <button class="layer tool-btn" data-layer="buildings">▧ Здания 3D</button>
+            <button class="layer tool-btn" data-layer="incidents">⚠ Инциденты</button>
+            <button class="layer tool-btn" data-layer="base">⌖ База OSM</button>
+          </div>
+          <div class="muted" style="margin-top:9px">* Демографические, финансовые и сценарные показатели демонстрационные.</div>
+        </section>
+      </aside>
+      <section class="center">
+        <div class="mapbox">
+          <div id="map" aria-label="Интерактивная 3D-карта Астаны"></div>
+          <div class="map-offline" id="map-offline"><div><b>Карта временно недоступна</b><span id="map-error">Проверьте подключение к внешней подложке. Панель сценария и расчёты остаются доступны.</span></div></div>
+          <div class="map-hud">
+            <div class="hud-stack"><span class="hud-pill"><strong>● ASTANA / 3D</strong></span><label class="hud-pill lens-control">ЛИНЗА <select id="lens-select" aria-label="Линза карты"><option value="traffic">Трафик</option><option value="ecology">Экология AQI</option><option value="social">Соцсфера</option><option value="utility">ЖКХ</option><option value="qol">QoL</option></select></label><span class="hud-pill" id="map-status">КАРТА · ЗАГРУЗКА</span></div>
+            <div class="map-tools"><button class="tool-btn" id="district-toggle" aria-pressed="true" title="Показать или скрыть границы и названия районов Астаны">▦ Границы районов: вкл</button><button class="tool-btn" id="tilt">▱ Наклон</button><button class="tool-btn" id="home">⌖ Центр</button></div>
+          </div>
+          <div class="map-bottom">
+            <div class="legend" id="legend"><b id="legend-title">ПОТОК · СЦЕНАРНАЯ МОДЕЛЬ</b><div id="legend-description">Цвет районов показывает выбранный показатель</div><div class="legend-scale" id="legend-scale"></div><div class="legend-range"><span id="legend-min">низкое значение</span><span id="legend-max">высокое значение</span></div><small id="legend-focus">Выберите линзу, чтобы перекрасить районы.</small></div>
+            <div class="map-hint">DRAG — ПАНОРАМА · CTRL+DRAG — НАКЛОН</div>
+          </div>
+        </div>
+        <section class="monitor">
+          <div class="monitor-head"><h2>📊 Мониторинг районов Астаны</h2><span class="source-badge">РАСЧЁТНАЯ МОДЕЛЬ · ОБНОВЛЕНО ПРИ ИЗМЕНЕНИИ БЮДЖЕТА</span></div>
+          <div class="table-wrap"><table><thead><tr><th>РАЙОН</th><th>QOL SCORE</th><th>ПРОБКИ</th><th>ВОЗДУХ AQI</th><th>ЖАЛОБЫ 109</th><th>СОЦСФЕРА</th></tr></thead><tbody id="district-table"></tbody></table></div>
+        </section>
+      </section>
+      <aside class="side right">
+        <div class="right-heading"><div><div class="eyebrow">Решения и мониторинг</div><h2>Городская ситуация</h2></div><span class="status" id="right-status">● СЦЕНАРИЙ</span></div>
+        <nav class="tabs" aria-label="Разделы пульта">
+          <button class="tab active" data-tab="effect">Эффект</button><button class="tab" data-tab="treasury">Казначейство</button><button class="tab" data-tab="cases">Обращения</button><button class="tab" data-tab="ai">XAI</button>
+        </nav>
+        <div class="pane-wrap">
+          <section class="pane active" id="pane-effect">
+            <div class="card"><div class="card-title">Сценарный результат</div><p>Показатели рассчитаны локально на основе прозрачных демонстрационных коэффициентов. Это не прогноз SUMO.</p></div>
+            <div class="metric-grid">
+              <div class="metric"><span>СРЕДНИЙ QOL</span><b id="metric-qol">—</b><em id="delta-qol">—</em></div>
+              <div class="metric"><span>ПРОБКИ · 1–10</span><b id="metric-traffic">—</b><em>ниже — лучше</em></div>
+              <div class="metric"><span>СРЕДНИЙ AQI</span><b id="metric-aqi">—</b><em>ниже — чище</em></div>
+              <div class="metric"><span>ДОСТУПНОСТЬ ОТ</span><b id="metric-transit">—</b><em>сценарный индекс</em></div>
+            </div>
+            <div class="card" style="margin-top:9px"><div class="card-title" id="profile-title">Район в фокусе</div><div class="row"><span>Озеленение</span><b id="profile-green">—</b></div><div class="row"><span>Соцсфера / школы</span><b id="profile-social">—</b></div><div class="row"><span>Индекс ЖКХ</span><b id="profile-utility">—</b></div><div class="row"><span>Открытые обращения</span><b id="profile-complaints">—</b></div></div>
+            <div class="tiny">Локальная модель · демонстрационный сценарий · геометрия районов приближённая</div>
+          </section>
+          <section class="pane" id="pane-treasury">
+            <div class="card"><div class="card-title">🏦 Казначейство и финансовый календарь</div><p>Платежи и баланс — демонстрационный набор. Отметки «Оплачено» хранятся только в текущей вкладке.</p></div>
+            <div class="metric-grid">
+              <div class="metric"><span>БАЛАНС</span><b id="cash-balance">142.5</b><em>млрд ₸</em></div>
+              <div class="metric"><span>К ОПЛАТЕ</span><b id="cash-due">—</b><em>млрд ₸</em></div>
+              <div class="metric"><span>СВОБОДНО</span><b id="cash-free">—</b><em>млрд ₸</em></div>
+              <div class="metric"><span>РИСК РАЗРЫВА</span><b id="cash-risk">—</b><em id="cash-risk-note">демо-оценка</em></div>
+            </div>
+            <div class="eyebrow" style="margin:12px 0 7px">Ближайшие транши</div><div class="pay-list" id="payments"></div>
+          </section>
+          <section class="pane" id="pane-cases">
+            <div class="card"><div class="card-title">📨 Обращения 109 / eOtinish</div><p>Демонстрационные обращения с геометками. Нажмите на запись, чтобы центрировать карту на инциденте.</p></div>
+            <div class="case-list" id="cases-list"></div>
+            <div class="card" style="margin-top:9px"><div class="card-title">Новое обращение · локальная запись</div>
+              <label class="muted" style="display:block;margin-top:8px">Тема<input class="select" id="new-case-title" maxlength="90" placeholder="Краткое описание" style="display:block;width:100%;margin-top:4px"></label>
+              <div class="control-pair"><label class="muted">Район<select class="select" id="new-case-district" style="display:block;width:100%;margin-top:4px"></select></label><label class="muted">Приоритет<select class="select" id="new-case-priority" style="display:block;width:100%;margin-top:4px"><option>Средний</option><option>Высокий</option><option>Критический</option></select></label></div>
+              <button class="tool-btn" id="add-case" style="width:100%;margin-top:8px">＋ Зарегистрировать</button>
+            </div>
+          </section>
+          <section class="pane" id="pane-ai">
+            <div class="card"><div class="card-title">🧠 Локальный Explainable AI</div><p>Текст формирует прозрачный JavaScript-анализ текущих метрик. Внешний AI не вызывается; ключи в браузере не используются.</p></div>
+            <div class="card priority-critical"><div class="card-title">🔴 Критические риски</div><div id="ai-risks" class="tiny" style="margin-top:7px"></div></div>
+            <div class="card"><div class="card-title">🟢 Положительные эффекты</div><div id="ai-positive" class="tiny" style="margin-top:7px"></div></div>
+            <div class="card recommend"><div class="card-title">💡 Рекомендация для Акима</div><div id="ai-recommendation" class="tiny" style="margin-top:7px"></div></div>
+            <div class="tiny">ROI — сценарная оценка изменения QoL на единицу бюджетного приоритета, не финансовый прогноз.</div>
+          </section>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js" onerror="window.__maplibreFailed=true"></script>
+  <script>
+  (() => {
+    "use strict";
+    // БЛОК 1. Сценарные константы, безопасные для автономной браузерной версии.
+    const CITY_BUDGET = 142.5;
+    const PROJECT_LIMIT = 120;
+    const SECTORS = [
+      {key:"transport", label:"Транспорт", color:"#00d2ff"},
+      {key:"ecology", label:"Экология", color:"#36d6a3"},
+      {key:"social", label:"Соцсфера / образование", color:"#8e9eff"},
+      {key:"utility", label:"ЖКХ / инфраструктура", color:"#ffbf5b"},
+      {key:"safety", label:"Общественная безопасность", color:"#ff7187"}
+    ];
+    const DISTRICTS = [
+      {name:"Есиль", lng:71.4304, lat:51.1282, traffic:54, green:63, social:74, utility:66, safety:75, aqi:58, complaints:3, polygon:[[71.390,51.105],[71.412,51.097],[71.448,51.105],[71.461,51.127],[71.445,51.146],[71.407,51.145],[71.390,51.105]]},
+      {name:"Нура", lng:71.4050, lat:51.1800, traffic:49, green:69, social:63, utility:61, safety:72, aqi:43, complaints:2, polygon:[[71.374,51.158],[71.407,51.145],[71.445,51.146],[71.464,51.166],[71.447,51.191],[71.408,51.202],[71.378,51.188],[71.374,51.158]]},
+      {name:"Алматы", lng:71.4700, lat:51.1450, traffic:76, green:47, social:67, utility:59, safety:62, aqi:112, complaints:6, polygon:[[71.445,51.105],[71.479,51.104],[71.503,51.120],[71.505,51.148],[71.480,51.163],[71.447,51.146],[71.461,51.127],[71.445,51.105]]},
+      {name:"Сарыарка", lng:71.3950, lat:51.2020, traffic:68, green:53, social:70, utility:56, safety:64, aqi:91, complaints:4, polygon:[[71.378,51.188],[71.408,51.202],[71.447,51.191],[71.464,51.207],[71.451,51.224],[71.403,51.226],[71.377,51.211],[71.378,51.188]]},
+      {name:"Байконур", lng:71.3850, lat:51.1640, traffic:65, green:50, social:64, utility:58, safety:63, aqi:79, complaints:3, polygon:[[71.374,51.158],[71.378,51.188],[71.378,51.211],[71.352,51.199],[71.348,51.174],[71.356,51.154],[71.374,51.158]]}
+    ];
+    const DEFAULT_RAW = {transport:24, ecology:22, social:22, utility:18, safety:14};
+    const PROJECTS = {
+      brt:{name:"BRT · выделенные полосы", amount:18, sector:"transport", district:"Есиль", effect:{traffic:-7, transit:8}},
+      school:{name:"Школа в Нуре", amount:12, sector:"social", district:"Нура", effect:{social:8, complaints:-1}},
+      park:{name:"Парк и зелёный коридор", amount:9, sector:"ecology", district:"Алматы", effect:{green:8, aqi:-10}},
+      clinic:{name:"Поликлиника в Нуре", amount:15, sector:"social", district:"Нура", effect:{social:5, complaints:-1}}
+    };
+    const LENSES = {
+      traffic:{title:"ТРАФИК · DEMO", key:"congestion", mode:"bad", max:10, legend:"ПРОБКИ · ИНДЕКС ОТ 1 ДО 10",unit:"/10"},
+      ecology:{title:"ЭКОЛОГИЯ · MOCK AQI", key:"aqi", mode:"bad", max:180, legend:"ВОЗДУХ · ИНДЕКС AQI",unit:"AQI"},
+      social:{title:"СОЦСФЕРА · DEMO", key:"social", mode:"good", max:100, legend:"СОЦСФЕРА · ОБЕСПЕЧЕННОСТЬ",unit:"/100"},
+      utility:{title:"ЖКХ · DEMO", key:"utility", mode:"good", max:100, legend:"ЖКХ · УСТОЙЧИВОСТЬ ИНФРАСТРУКТУРЫ",unit:"/100"},
+      qol:{title:"QOL · DEMO", key:"qol", mode:"good", max:100, legend:"КАЧЕСТВО ЖИЗНИ · QoL",unit:"/100"}
+    };
+    const CORRIDORS = [
+      {name:"Мангилик Ел · схема", path:[[71.38,51.132],[71.405,51.131],[71.431,51.13],[71.455,51.13],[71.486,51.132]]},
+      {name:"Сыганак · схема", path:[[71.405,51.09],[71.407,51.12],[71.408,51.15],[71.407,51.18],[71.405,51.215]]},
+      {name:"Кунаева · схема", path:[[71.37,51.174],[71.398,51.175],[71.428,51.176],[71.458,51.176],[71.486,51.175]]}
+    ];
+    const OBJECTS = [
+      {name:"Школа · Есиль", district:"Есиль", category:"Школа", lng:71.436, lat:51.121, color:"#00d2ff"},
+      {name:"Клиника · Есиль", district:"Есиль", category:"Клиника", lng:71.421, lat:51.115, color:"#ff7187"},
+      {name:"Парк · Нура", district:"Нура", category:"Парк", lng:71.399, lat:51.184, color:"#36d6a3"},
+      {name:"Школа · Нура", district:"Нура", category:"Школа", lng:71.411, lat:51.174, color:"#00d2ff"},
+      {name:"Поликлиника · Алматы", district:"Алматы", category:"Клиника", lng:71.474, lat:51.145, color:"#ff7187"},
+      {name:"Парк · Алматы", district:"Алматы", category:"Парк", lng:71.461, lat:51.139, color:"#36d6a3"},
+      {name:"Школа · Сарыарка", district:"Сарыарка", category:"Школа", lng:71.398, lat:51.198, color:"#00d2ff"},
+      {name:"Пункт безопасности · Байконур", district:"Байконур", category:"Безопасность", lng:71.384, lat:51.162, color:"#ffbf5b"}
+    ];
+    const CASES = [
+      {id:"109-2401",district:"Есиль",title:"Отключение тепла в ЖК Promenade",priority:"Критический",status:"В работе",source:"Демо · 109",days:1,lng:71.433,lat:51.109},
+      {id:"109-2402",district:"Есиль",title:"Затор на проспекте Мангилик Ел",priority:"Высокий",status:"Назначено",source:"Демо · 2ГИС",days:2,lng:71.428,lat:51.128},
+      {id:"109-2403",district:"Алматы",title:"Переполнены контейнеры во дворах",priority:"Высокий",status:"В работе",source:"Демо · 109",days:1,lng:71.468,lat:51.142},
+      {id:"109-2404",district:"Сарыарка",title:"Риск повреждения теплосети",priority:"Критический",status:"В работе",source:"Демо · 109",days:0,lng:71.401,lat:51.197},
+      {id:"109-2405",district:"Нура",title:"Нехватка мест в школе",priority:"Средний",status:"Зарегистрировано",source:"Демо · eOtinish",days:14,lng:71.410,lat:51.176},
+      {id:"109-2406",district:"Байконур",title:"Неисправное освещение двора",priority:"Средний",status:"Назначено",source:"Демо · 109",days:4,lng:71.388,lat:51.163},
+      {id:"109-2407",district:"Алматы",title:"Жалоба на загрязнение воздуха",priority:"Высокий",status:"В работе",source:"Демо · AQI",days:2,lng:71.476,lat:51.147}
+    ];
+    const PAYMENTS = [
+      {title:"Субсидии общественного транспорта", amount:4.8, days:3, sector:"Транспорт", paid:false},
+      {title:"Ремонт ТЭЦ-3", amount:6.4, days:9, sector:"ЖКХ", paid:false},
+      {title:"Строительство школы в Нуре", amount:3.15, days:16, sector:"Образование", paid:false}
+    ];
+    const state = {raw:{...DEFAULT_RAW}, shares:{...DEFAULT_RAW}, metrics:[], lens:"traffic", activeLayer:"traffic", focus:"", horizon:3, mode:"percent", map:null, mapReady:false, projectIds:["brt","school"], scenario:[], baseline:[], baselineStats:null, currentStats:null, districtMarkers:[], districtDivisionsVisible:true,roadLineLayerIds:[]};
+    const $ = (selector, root=document) => root.querySelector(selector);
+    const $$ = (selector, root=document) => Array.from(root.querySelectorAll(selector));
+    const clamp = (value,min,max) => Math.max(min,Math.min(max,value));
+    const esc = (value) => String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    function toast(message){const el=$("#toast");el.textContent=message;el.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove("show"),2600);}
+
+    // БЛОК 2. Локальная модель источников: все mock-поля помечаются как демо.
+    function normalize(values){
+      const safe=SECTORS.map(s=>Math.max(0,Number(values[s.key])||0));
+      const total=safe.reduce((a,b)=>a+b,0);
+      if(total<=0)return Object.fromEntries(SECTORS.map(s=>[s.key,20]));
+      const scaled=safe.map(v=>v*100/total);
+      const rounded=scaled.map(v=>Math.round(v*10)/10);
+      const diff=Math.round((100-rounded.reduce((a,b)=>a+b,0))*10)/10;
+      rounded[rounded.length-1]+=diff;
+      return Object.fromEntries(SECTORS.map((s,i)=>[s.key,rounded[i]]));
+    }
+    function selectedProjectEffects(districtName){
+      const result={traffic:0,green:0,social:0,utility:0,safety:0,aqi:0,transit:0,complaints:0};
+      state.projectIds.forEach(id=>{
+        const project=PROJECTS[id];if(!project||project.district!==districtName)return;
+        Object.entries(project.effect).forEach(([key,value])=>{result[key]=(result[key]||0)+value});
+      });
+      return result;
+    }
+    function calculateDistricts(raw,horizon,includeProjects=true){
+      const shares=normalize(raw);
+      const horizonScale=1+Math.max(0,horizon-1)*.12;
+      return DISTRICTS.map(d=>{
+        const project=includeProjects?selectedProjectEffects(d.name):{traffic:0,green:0,social:0,utility:0,safety:0,aqi:0,transit:0,complaints:0};
+        const change=key=>shares[key]-20;
+        const traffic=clamp(d.traffic-change("transport")*.42*horizonScale+project.traffic,5,98);
+        const green=clamp(d.green+change("ecology")*.45*horizonScale+project.green,5,98);
+        const social=clamp(d.social+change("social")*.42*horizonScale+project.social,5,98);
+        const utility=clamp(d.utility+change("utility")*.46*horizonScale,5,98);
+        const safety=clamp(d.safety+change("safety")*.4*horizonScale,5,98);
+        const aqi=clamp(d.aqi-change("ecology")*.9*horizonScale+(traffic-d.traffic)*.25+project.aqi,15,190);
+        const pm25=clamp(aqi*.42,4,85);
+        const congestion=clamp(traffic/10,1,10);
+        const complaints=Math.max(0,d.complaints+(utility<54?1:0)+(congestion>7.5?1:0)+project.complaints);
+        const qol=clamp((100-traffic)*.22+green*.18+social*.22+utility*.2+safety*.18,0,100);
+        return {...d,traffic,green,social,utility,safety,aqi,pm25,congestion,complaints,qol,transit:clamp(54+(100-traffic)*.2+change("transport")*.32+project.transit,25,95)};
+      });
+    }
+    function summarize(rows){
+      const avg=key=>rows.reduce((sum,row)=>sum+row[key],0)/rows.length;
+      return {qol:avg("qol"),traffic:avg("congestion"),aqi:avg("aqi"),green:avg("green"),social:avg("social"),utility:avg("utility"),safety:avg("safety"),transit:avg("transit"),complaints:rows.reduce((sum,row)=>sum+row.complaints,0)};
+    }
+    function renderBudgetControls(){
+      const holder=$("#budget-controls");holder.replaceChildren();
+      SECTORS.forEach((sector,index)=>{
+        const wrap=document.createElement("div");wrap.className="field";
+        const label=document.createElement("div");label.className="field-head";
+        const name=document.createElement("span");name.textContent=sector.label;
+        const value=document.createElement("b");value.id="budget-value-"+sector.key;
+        const slider=document.createElement("input");slider.type="range";slider.min="0";slider.max=state.mode==="percent"?"100":String(CITY_BUDGET);slider.step=state.mode==="percent"?"1":"0.5";slider.value=String(state.raw[sector.key]);slider.setAttribute("aria-label",sector.label);
+        slider.id="budget-slider-"+sector.key;slider.addEventListener("input",()=>{state.raw[sector.key]=Number(slider.value);recalculate()});
+        const amount=document.createElement("div");amount.className="field-head";amount.style.marginTop="3px";
+        const detail=document.createElement("small");detail.id="budget-amount-"+sector.key;
+        label.append(name,value);amount.append(detail);wrap.append(label,slider,amount);holder.append(wrap);
+      });
+      updateBudgetText();
+    }
+    function updateBudgetText(){
+      state.shares=normalize(state.raw);
+      const total=SECTORS.reduce((sum,s)=>sum+CITY_BUDGET*state.shares[s.key]/100,0);
+      $("#budget-total").textContent=total.toFixed(1);
+      $("#budget-meter").style.width="100%";
+      SECTORS.forEach(s=>{
+        const percent=state.shares[s.key],amount=CITY_BUDGET*percent/100;
+        const value=$("#budget-value-"+s.key),detail=$("#budget-amount-"+s.key);
+        if(value)value.textContent=state.mode==="percent"?percent.toFixed(1)+"%":amount.toFixed(1)+" млрд";
+        if(detail)detail.textContent=state.mode==="percent"?amount.toFixed(1)+" млрд ₸ · нормализовано "+percent.toFixed(1)+"%":percent.toFixed(1)+"% доли · от городского бюджета";
+      });
+    }
+    function renderProjectTotals(){
+      const total=state.projectIds.reduce((sum,id)=>sum+PROJECTS[id].amount,0);
+      $("#project-total").textContent=total.toFixed(1);
+      $("#project-meter").style.width=Math.min(100,total/PROJECT_LIMIT*100)+"%";
+      $("#project-limit").textContent=total>PROJECT_LIMIT?"Лимит превышен. Снимите выбор одного из проектов.":"";
+    }
+    function renderDistrictTable(){
+      const tbody=$("#district-table");tbody.replaceChildren();
+      state.scenario.forEach(row=>{
+        const tr=document.createElement("tr");tr.dataset.district=row.name;
+        if(row.name===state.focus)tr.classList.add("focused");
+        tr.innerHTML="<td>"+esc(row.name)+"</td><td class='qol'>"+row.qol.toFixed(1)+"</td><td>"+row.congestion.toFixed(1)+"/10</td><td>"+Math.round(row.aqi)+"</td><td>"+row.complaints+"</td><td>"+row.social.toFixed(1)+"</td>";
+        tr.addEventListener("click",()=>focusDistrict(row.name,true));tbody.append(tr);
+      });
+    }
+    function renderMetrics(){
+      state.currentStats=summarize(state.scenario);
+      const base=state.baselineStats;
+      $("#metric-qol").textContent=state.currentStats.qol.toFixed(1);
+      $("#delta-qol").textContent=(state.currentStats.qol-base.qol>=0?"+":"")+(state.currentStats.qol-base.qol).toFixed(1)+" к базе";
+      $("#metric-traffic").textContent=state.currentStats.traffic.toFixed(1);
+      $("#metric-aqi").textContent=Math.round(state.currentStats.aqi);
+      $("#metric-transit").textContent=Math.round(state.currentStats.transit)+"%";
+      const district=state.scenario.find(d=>d.name===state.focus)||state.scenario[0];
+      $("#profile-title").textContent="Район · "+district.name;
+      $("#profile-green").textContent=district.green.toFixed(1)+" / 100";
+      $("#profile-social").textContent=district.social.toFixed(1)+" / 100";
+      $("#profile-utility").textContent=district.utility.toFixed(1)+" / 100";
+      $("#profile-complaints").textContent=String(district.complaints);
+      $("#horizon-label").textContent=state.horizon+" "+(state.horizon===1?"год":"лет");
+      $("#right-status").textContent="● СЦЕНАРИЙ · "+state.horizon+" Г.";
+      renderAI();
+    }
+    function renderAI(){
+      const m=state.currentStats,base=state.baselineStats,lead=SECTORS.reduce((best,s)=>state.shares[s.key]>state.shares[best.key]?s:best,SECTORS[0]);
+      const weakest=[...state.scenario].sort((a,b)=>a.qol-b.qol)[0];
+      const risks=[],positives=[];
+      if(state.shares.utility<15)risks.push("Доля ЖКХ "+state.shares.utility.toFixed(1)+"% ниже базовых 20%: индекс коммунальной устойчивости снижается, особенно в районах со слабой исходной оценкой.");
+      if(m.traffic>base.traffic+.2)risks.push("Средняя нагрузка на дорожную сеть выросла до "+m.traffic.toFixed(1)+"/10. Перепроверьте приоритет транспорта и коридор Мангилик Ел.");
+      if(m.aqi>base.aqi+2)risks.push("Сценарная оценка AQI выросла до "+Math.round(m.aqi)+". Снижение доли экологии и рост нагрузки могут ухудшить качество воздуха.");
+      if(m.complaints>=base.complaints+2)risks.push("Расчётное число открытых обращений увеличилось до "+m.complaints+". Приоритет — адресная работа в районе "+weakest.name+".");
+      if(!risks.length)risks.push("Критических сигналов по локальным порогам не выявлено. Следите за ЖКХ в районе "+weakest.name+" (индекс "+weakest.utility.toFixed(1)+").");
+      if(m.qol>base.qol+.15)positives.push("Средний QoL вырос на "+(m.qol-base.qol).toFixed(1)+" пункта, до "+m.qol.toFixed(1)+"/100.");
+      if(m.green>base.green+.15)positives.push("Показатель озеленения увеличился до "+m.green.toFixed(1)+"/100.");
+      if(m.social>base.social+.15)positives.push("Социальный индекс вырос до "+m.social.toFixed(1)+"/100; инвестиции в школы и медицину дают адресный эффект.");
+      if(m.transit>base.transit+.2)positives.push("Расчётная доступность общественного транспорта достигла "+Math.round(m.transit)+"%.");
+      if(!positives.length)positives.push("Сценарий близок к базовому. Выберите проект или измените доли, чтобы оценить альтернативу.");
+      const roi=(m.qol-base.qol)/Math.max(1,Math.abs(state.shares[lead.key]-20));
+      $("#ai-risks").innerHTML=risks.map(x=>"• "+esc(x)).join("<br><br>");
+      $("#ai-positive").innerHTML=positives.map(x=>"• "+esc(x)).join("<br><br>");
+      $("#ai-recommendation").innerHTML="Рассмотрите направление <b>"+esc(lead.label)+"</b> ("+state.shares[lead.key].toFixed(1)+"% · "+(CITY_BUDGET*state.shares[lead.key]/100).toFixed(1)+" млрд ₸). Адресный фокус — <b>"+esc(weakest.name)+"</b>, QoL "+weakest.qol.toFixed(1)+". Сценарная чувствительность: "+roi.toFixed(2)+" пункта QoL на 1 п. п. изменения ведущего приоритета.";
+    }
+    function renderPayments(){
+      const host=$("#payments");host.replaceChildren();
+      const due=PAYMENTS.filter(p=>!p.paid).reduce((sum,p)=>sum+p.amount,0),paid=PAYMENTS.filter(p=>p.paid).reduce((sum,p)=>sum+p.amount,0);
+      const balance=Math.max(0,142.5-paid),free=balance-due;
+      $("#cash-balance").textContent=balance.toFixed(1);$("#cash-due").textContent=due.toFixed(2);$("#cash-free").textContent=free.toFixed(2);
+      const risk=free<10?"ВЫСОКИЙ":free<25?"СРЕДНИЙ":"НИЗКИЙ";$("#cash-risk").textContent=risk;$("#cash-risk").style.color=risk==="ВЫСОКИЙ"?"var(--red)":risk==="СРЕДНИЙ"?"var(--amber)":"var(--green)";
+      $("#cash-risk-note").textContent=free<10?"малый остаток":free<25?"следить за сроками":"демо-оценка";
+      PAYMENTS.forEach((p,index)=>{
+        const el=document.createElement("div");el.className="pay";
+        const dateText=p.days===0?"сегодня":p.days===1?"через 1 день":"через "+p.days+" дней";
+        el.innerHTML="<div class='pay-top'><b>"+esc(p.title)+"</b><span class='amount'>"+p.amount.toFixed(2)+" млрд ₸</span></div><small>"+esc(p.sector)+" · срок "+dateText+"</small><button class='tool-btn' data-pay='"+index+"' style='margin-top:7px;padding:5px 7px'>"+(p.paid?"✓ Оплачено":"Отметить оплату")+"</button>";
+        const button=$("button",el);button.disabled=p.paid;button.addEventListener("click",()=>{p.paid=true;renderPayments();toast("Транш отмечен как оплаченный в этой вкладке.")});host.append(el);
+      });
+    }
+    function renderCases(){
+      const host=$("#cases-list");host.replaceChildren();
+      CASES.forEach((item,index)=>{
+        const el=document.createElement("article");el.className="case "+(item.priority==="Критический"?"priority-critical":item.priority==="Высокий"?"priority-high":"priority-medium");
+        const days=item.days===0?"срок сегодня":item.days===1?"срок завтра":"срок "+item.days+" дн.";
+        el.innerHTML="<div class='case-top'><b>"+esc(item.title)+"</b><span class='status-tag'>"+esc(item.priority)+"</span></div><small>"+esc(item.id)+" · "+esc(item.district)+" · "+esc(item.source)+"</small><small>"+esc(item.status)+" · "+days+"</small>";
+        el.addEventListener("click",()=>{focusDistrict(item.district,true);if(state.mapReady)state.map.flyTo({center:[item.lng,item.lat],zoom:14,pitch:58,duration:750});toast("Карта центрирована на обращении "+item.id)});host.append(el);
+      });
+    }
+    function recalculate(){
+      state.shares=normalize(state.raw);updateBudgetText();
+      state.scenario=calculateDistricts(state.raw,state.horizon);
+      renderDistrictTable();renderMetrics();updateMapData();
+    }
+    function focusDistrict(name,fly){
+      state.focus=name;
+      $("#district-select").value=name;
+      renderDistrictTable();renderMetrics();updateMapData();
+      const district=DISTRICTS.find(d=>d.name===name);
+      if(fly&&district&&state.mapReady)state.map.flyTo({center:[district.lng,district.lat],zoom:13.1,duration:700});
+    }
+    function setLayer(layer){
+      state.activeLayer=layer;
+      $$(".layer").forEach(button=>button.classList.toggle("active",button.dataset.layer===layer));
+      $("#map-status").textContent=layer==="buildings"?"ЗДАНИЯ · OSM":"СЛОЙ · "+(layer==="base"?"OSM":"DEMO");
+      $("#source-chip").textContent="🗺️ OSM · "+(state.mapReady?"карта загружена":"Demo-данные");
+      if(state.mapReady){
+        ["project-points","project-labels","districts-extrusion","incident-points","green-areas"].forEach(id=>{
+          if(!state.map.getLayer(id))return;
+          let show=false;
+          if(layer==="traffic")show=id==="districts-extrusion"&&state.lens!=="traffic";
+          if(layer==="schools")show=["project-points","project-labels"].includes(id);
+          if(layer==="green")show=id==="green-areas"||id==="districts-extrusion";
+          if(layer==="buildings")show=id==="districts-extrusion";
+          if(layer==="incidents")show=id==="incident-points";
+          state.map.setLayoutProperty(id,"visibility",show?"visible":"none");
+        });
+        ["district-boundary-casing","district-outline"].forEach(id=>{
+          if(state.map.getLayer(id))state.map.setLayoutProperty(id,"visibility",state.districtDivisionsVisible?"visible":"none");
+        });
+        if(state.map.getLayer("districts-extrusion"))state.map.setLayoutProperty("districts-extrusion","visibility",state.lens!=="traffic"&&["traffic","green","buildings"].includes(layer)?"visible":"none");
+        if(state.map.getLayer("district-choropleth"))state.map.setLayoutProperty("district-choropleth","visibility",state.lens==="traffic"?"none":"visible");
+        if(state.map.getLayer("buildings-3d"))state.map.setLayoutProperty("buildings-3d","visibility",layer==="buildings"?"visible":"none");
+      }
+    }
+    function setLens(lens){if(!LENSES[lens])return;state.lens=lens;renderLensUi();updateMapData()}
+    function toggleDistrictDivisions(){
+      state.districtDivisionsVisible=!state.districtDivisionsVisible;
+      const button=$("#district-toggle");
+      button.textContent=state.districtDivisionsVisible?"▦ Границы районов: вкл":"▦ Границы районов: выкл";
+      button.setAttribute("aria-pressed",String(state.districtDivisionsVisible));
+      button.classList.toggle("active",state.districtDivisionsVisible);
+      if(state.mapReady)["district-boundary-casing","district-outline"].forEach(id=>{
+        if(state.map.getLayer(id))state.map.setLayoutProperty(id,"visibility",state.districtDivisionsVisible?"visible":"none");
+      });
+      state.districtMarkers.forEach(marker=>{marker.getElement().style.display=state.districtDivisionsVisible?"":"none"});
+    }
+    function colorFor(row){
+      const lens=LENSES[state.lens],raw=clamp(row[lens.key],0,lens.max);
+      let ratio=clamp(raw/lens.max,0,1);
+      if(state.lens==="traffic"){
+        if(ratio<.5){const t=ratio*2;return `rgb(${Math.round(46+208*t)},${Math.round(204+8*t)},${Math.round(113-50*t)})`}
+        const t=(ratio-.5)*2;return `rgb(${Math.round(254-231*t)},${Math.round(212-132*t)},${Math.round(63-12*t)})`;
+      }
+      if(lens.mode==="good")ratio=1-ratio;
+      const red=Math.round(22+ratio*226),green=Math.round(198-ratio*144),blue=Math.round(245-ratio*185);
+      return `rgb(${red},${green},${blue})`;
+    }
+    function renderLensUi(){
+      const lens=LENSES[state.lens];
+      $("#legend-title").textContent=lens.legend;
+      $("#legend-description").textContent=state.lens==="traffic"?"Трафик на дорогах · демо-оценка по классу улицы; не live-данные 2ГИС. Бирюзовый — свободнее, красный — загруженнее.":lens.mode==="bad"?"Бирюзовый — ниже значение, красный — выше.":"Красный — ниже показатель, бирюзовый — выше.";
+      $("#legend-scale").style.background=state.lens==="traffic"?"linear-gradient(90deg,#2ecc71 0%,#f4d03f 52%,#e74c3c 100%)":lens.mode==="bad"?"linear-gradient(90deg,#16c6f5,#f8363c)":"linear-gradient(90deg,#f8363c,#16c6f5)";
+      const values=state.scenario.map(row=>row[lens.key]).filter(Number.isFinite),min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):100;
+      $("#legend-min").textContent=(state.lens==="traffic"?"1":min.toFixed(lens.key==="congestion"?1:0))+" "+lens.unit;
+      $("#legend-max").textContent=(state.lens==="traffic"?"10":max.toFixed(lens.key==="congestion"?1:0))+" "+lens.unit;
+      const district=state.scenario.find(row=>row.name===state.focus);
+      $("#legend-focus").textContent=district?(state.lens==="traffic"?`Средняя нагрузка · ${district.name}: ${district.congestion.toFixed(1)}/10 · цвет улиц зависит от класса и сценария.`:`${district.name}: ${district[lens.key].toFixed(1)} ${lens.unit} · демо-модель`):"Цвет карты меняется вместе с выбранной линзой.";
+      state.districtMarkers.forEach((marker,index)=>{
+        const row=state.scenario.find(item=>item.name===DISTRICTS[index].name);
+        if(!row)return;
+        marker.getElement().style.borderColor=colorFor(row);
+        marker.getElement().style.boxShadow=`0 0 15px ${colorFor(row)}`;
+      });
+    }
+    function districtGeoJSON(){
+      return {type:"FeatureCollection",features:state.scenario.map(row=>({type:"Feature",properties:{name:row.name,qol:row.qol,traffic:row.traffic,congestion:row.congestion,aqi:row.aqi,social:row.social,green:row.green,utility:row.utility,safety:row.safety,color:colorFor(row)},geometry:{type:"Polygon",coordinates:[row.polygon]}}))};
+    }
+    function lineGeoJSON(){
+      return {type:"FeatureCollection",features:CORRIDORS.map((line,index)=>({type:"Feature",properties:{name:line.name,traffic:Math.round(state.currentStats.traffic*10+index*4),color:index===0?"#ff536d":index===1?"#ffbf5b":"#00d2ff"},geometry:{type:"LineString",coordinates:line.path}}))};
+    }
+    function incidentGeoJSON(){
+      const selected=CASES.filter(c=>c.status!=="Закрыто");
+      return {type:"FeatureCollection",features:selected.map(c=>({type:"Feature",properties:{id:c.id,title:c.title,district:c.district,priority:c.priority,status:c.status,source:c.source,days:c.days},geometry:{type:"Point",coordinates:[c.lng,c.lat]}}))};
+    }
+    function updateMapData(){
+      if(!state.mapReady)return;
+      const districtSource=state.map.getSource("district-data");if(districtSource)districtSource.setData(districtGeoJSON());
+      const incidentSource=state.map.getSource("incident-data");if(incidentSource)incidentSource.setData(incidentGeoJSON());
+      const district=state.scenario.find(d=>d.name===state.focus);
+      if(state.map.getLayer("districts-extrusion")){
+        state.map.setPaintProperty("districts-extrusion","fill-extrusion-color",["case",["==",["get","name"],state.focus||"__none__"],"#ffbf5b",["get","color"]]);
+        state.map.setPaintProperty("districts-extrusion","fill-extrusion-height",["+",["*",["get",LENSES[state.lens].key],state.lens==="aqi"?1.15:2.3],70]);
+      }
+      if(state.map.getLayer("district-choropleth"))state.map.setPaintProperty("district-choropleth","fill-opacity",["case",["==",["get","name"],state.focus||"__none__"],.5,.27]);
+      updateRoadTrafficStyle();
+      renderLensUi();
+      if(district)$("#map-status").textContent="ФОКУС · "+district.name.toUpperCase();
+      setLayer(state.activeLayer);
+    }
+    function showMapError(message){
+      $("#map-offline").classList.add("show");$("#map-error").textContent=message;
+      $("#map-status").textContent="КАРТА · НЕТ СОЕДИНЕНИЯ";$("#source-chip").textContent="🗺️ OSM · Нет соединения";
+    }
+    function roadLoadExpression(){
+      const scenarioOffset=state.currentStats?(state.currentStats.traffic-5.8)*.55:0;
+      return ["interpolate",["linear"],["+",["match",["get","class"],"motorway",8.7,"trunk",8.1,"primary",7.5,"secondary",6.4,"tertiary",5.4,"minor",4.4,"service",3.3,3.8],scenarioOffset],1,"#2ecc71",4,"#65c466",5.5,"#f4d03f",7,"#f39c12",8.5,"#e74c3c",10,"#c0392b"];
+    }
+    function roadLoadForClass(roadClass){
+      const baseline={motorway:8.7,trunk:8.1,primary:7.5,secondary:6.4,tertiary:5.4,minor:4.4,service:3.3};
+      return clamp((baseline[roadClass]||3.8)+(state.currentStats?(state.currentStats.traffic-5.8)*.55:0),1,10);
+    }
+    function updateRoadTrafficStyle(){
+      if(!state.mapReady)return;
+      const muted=["match",["get","class"],"motorway","#35566a","trunk","#345969","primary","#405968","secondary","#354d5a","tertiary","#2d424e","minor","#273a45","service","#20323d","#263a46"];
+      state.roadLineLayerIds.forEach(id=>{
+        if(state.map.getLayer(id))state.map.setPaintProperty(id,"line-color",state.lens==="traffic"?roadLoadExpression():muted);
+      });
+    }
+    function registerRoadInteractions(map){
+      const styleLayers=map.getStyle().layers||[];
+      state.roadLineLayerIds=styleLayers.filter(layer=>layer.type==="line"&&String(layer["source-layer"]||"").toLowerCase()==="transportation"&&!String(layer.id).toLowerCase().includes("casing")&&!String(layer.id).toLowerCase().includes("outline")).map(layer=>layer.id);
+      state.roadLineLayerIds.forEach(id=>{
+        map.on("click",id,event=>{
+          const feature=event.features&&event.features[0];if(!feature)return;
+          const properties=feature.properties||{},roadClass=String(properties.class||"street"),name=properties.name||properties.ref||({motorway:"Магистраль",trunk:"Транзитная дорога",primary:"Главная улица",secondary:"Улица районного значения",tertiary:"Городская улица",minor:"Местная улица",service:"Проезд"}[roadClass]||"Дорога OSM");
+          const value=roadLoadForClass(roadClass);
+          new maplibregl.Popup({closeButton:true,offset:8}).setLngLat(event.lngLat).setHTML("<b>"+esc(name)+"</b><br>Класс: "+esc(roadClass)+"<br>Расчётная нагрузка: <strong>"+value.toFixed(1)+" /10</strong><br><small>OSM · демо-оценка, не live-данные 2ГИС</small>").addTo(map);
+        });
+        map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");
+        map.on("mouseleave",id,()=>map.getCanvas().style.cursor="");
+      });
+      updateRoadTrafficStyle();
+    }
+    function applyDarkBasemap(){
+      const styleLayers=state.map.getStyle().layers||[];
+      styleLayers.forEach(layer=>{
+        const id=String(layer.id||"").toLowerCase(),sourceLayer=String(layer["source-layer"]||"").toLowerCase();
+        if(layer.type==="background"){state.map.setPaintProperty(layer.id,"background-color","#0b131e");return}
+        if(layer.type==="fill"){
+          let color="#0d1823";
+          if(sourceLayer.includes("water")||id.includes("water"))color="#10212d";
+          else if(sourceLayer.includes("park")||sourceLayer.includes("landcover")||id.includes("park")||id.includes("green"))color="#10221f";
+          else if(sourceLayer.includes("building")||id.includes("building"))color="#13232e";
+          else if(sourceLayer.includes("landuse")||id.includes("landuse"))color="#101b24";
+          if(layer.paint&&"fill-color" in layer.paint)state.map.setPaintProperty(layer.id,"fill-color",color);
+          if(layer.paint&&"fill-opacity" in layer.paint)state.map.setPaintProperty(layer.id,"fill-opacity",.82);
+        }
+        if(layer.type==="line"&&sourceLayer==="transportation"&&layer.paint&&"line-color" in layer.paint){
+          const casing=id.includes("casing")||id.includes("outline");
+          if(casing){
+            state.map.setPaintProperty(layer.id,"line-color","#07111a");
+            state.map.setPaintProperty(layer.id,"line-width",["interpolate",["linear"],["zoom"],8,["match",["get","class"],"motorway",4,"trunk",3.6,"primary",3.1,"secondary",2.7,"tertiary",2.3,1.7],15,["match",["get","class"],"motorway",15,"trunk",13,"primary",11,"secondary",9,"tertiary",7,5]]);
+            if("line-opacity" in layer.paint)state.map.setPaintProperty(layer.id,"line-opacity",1);
+          }else{
+            state.map.setPaintProperty(layer.id,"line-color",["match",["get","class"],"motorway","#35566a","trunk","#345969","primary","#405968","secondary","#354d5a","tertiary","#2d424e","minor","#273a45","service","#20323d","#263a46"]);
+            state.map.setPaintProperty(layer.id,"line-width",["interpolate",["linear"],["zoom"],8,["match",["get","class"],"motorway",2.8,"trunk",2.5,"primary",2.2,"secondary",1.9,"tertiary",1.6,"minor",1.25,.95],15,["match",["get","class"],"motorway",10,"trunk",8.5,"primary",7.2,"secondary",5.8,"tertiary",4.6,"minor",3.4,2.5]]);
+            if("line-opacity" in layer.paint)state.map.setPaintProperty(layer.id,"line-opacity",.95);
+          }
+          return;
+        }
+        if(layer.type==="line"&&layer.paint&&"line-color" in layer.paint){
+          let color="#243746";
+          if(sourceLayer.includes("water")||id.includes("water"))color="#173445";
+          else if(id.includes("boundary")||id.includes("admin"))color="#304754";
+          state.map.setPaintProperty(layer.id,"line-color",color);
+          if("line-opacity" in layer.paint)state.map.setPaintProperty(layer.id,"line-opacity",.78);
+        }
+        if(layer.type==="symbol"&&layer.paint){
+          if("text-color" in layer.paint)state.map.setPaintProperty(layer.id,"text-color","#9db6c2");
+          if("text-halo-color" in layer.paint)state.map.setPaintProperty(layer.id,"text-halo-color","#0b131e");
+          if("text-halo-width" in layer.paint)state.map.setPaintProperty(layer.id,"text-halo-width",1.2);
+        }
+      });
+      state.roadLineLayerIds=styleLayers.filter(layer=>layer.type==="line"&&String(layer["source-layer"]||"").toLowerCase()==="transportation"&&!String(layer.id).toLowerCase().includes("casing")&&!String(layer.id).toLowerCase().includes("outline")).map(layer=>layer.id);
+      updateRoadTrafficStyle();
+    }
+    function initMap(){
+      if(window.__maplibreFailed||!window.maplibregl){showMapError("Не удалось загрузить MapLibre GL JS. Проверьте доступ к CDN. Панель бюджета, таблица и локальная аналитика продолжают работать.");return}
+      try{
+        const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[71.4304,51.155],zoom:10.9,pitch:54,bearing:-15,antialias:true,hash:false});
+        state.map=map;
+        map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"bottom-right");
+        map.addControl(new maplibregl.ScaleControl({unit:"metric"}),"bottom-left");
+        map.on("error",event=>{
+          const message=event&&event.error&&event.error.message?event.error.message:"Ошибка загрузки картографического источника";
+          if(!state.mapReady)showMapError("Подложка или внешний источник недоступны: "+message+". Остальные функции работают в локальном демо-режиме.");
+        });
+        map.on("load",()=>{
+          state.mapReady=true;$("#map-offline").classList.remove("show");$("#map-status").textContent="КАРТА · OPENFREEMAP";$("#source-chip").textContent="🗺️ OSM · карта загружена";
+          applyDarkBasemap();
+          registerRoadInteractions(map);
+          const styleLayers=map.getStyle().layers||[];
+          const buildingLayer=styleLayers.find(layer=>layer["source-layer"]==="building"&&layer.type==="fill");
+          if(buildingLayer&&buildingLayer.source&&map.getSource(buildingLayer.source)){
+            map.addLayer({id:"buildings-3d",source:buildingLayer.source,"source-layer":"building",type:"fill-extrusion",minzoom:12,layout:{visibility:state.activeLayer==="buildings"?"visible":"none"},paint:{"fill-extrusion-color":["interpolate",["linear"],["coalesce",["get","render_height"],["get","height"],8],0,"#16303e",20,"#205060",80,"#4e8c96"],"fill-extrusion-height":["coalesce",["get","render_height"],["get","height"],8],"fill-extrusion-base":["coalesce",["get","render_min_height"],["get","min_height"],0],"fill-extrusion-opacity":.9}},buildingLayer.id);
+          }else{$("#map-status").textContent="КАРТА · OSM / 3D DEMO"}
+          map.addSource("district-data",{type:"geojson",data:districtGeoJSON()});
+          map.addLayer({id:"district-choropleth",type:"fill",source:"district-data",layout:{visibility:"visible"},paint:{"fill-color":["get","color"],"fill-opacity":["case",["==",["get","name"],state.focus||"__none__"],.5,.27]}});
+          map.addLayer({id:"districts-extrusion",type:"fill-extrusion",source:"district-data",layout:{visibility:"visible"},paint:{"fill-extrusion-color":["get","color"],"fill-extrusion-height":["+",["*",["get","traffic"],2.3],70],"fill-extrusion-base":0,"fill-extrusion-opacity":.28}});
+          map.addLayer({id:"district-boundary-casing",type:"line",source:"district-data",layout:{visibility:state.districtDivisionsVisible?"visible":"none","line-cap":"round","line-join":"round"},paint:{"line-color":"#06111b","line-width":6,"line-opacity":.98}});
+          map.addLayer({id:"district-outline",type:"line",source:"district-data",layout:{visibility:state.districtDivisionsVisible?"visible":"none","line-cap":"round","line-join":"round"},paint:{"line-color":["case",["==",["get","name"],state.focus||"__none__"],"#ffbf5b","#00d2ff"],"line-width":3,"line-opacity":.98}});
+          DISTRICTS.forEach(d=>{
+            const element=document.createElement("div");element.className="district-name-marker";element.textContent=d.name;element.setAttribute("aria-label","Район "+d.name);
+            const marker=new maplibregl.Marker({element,anchor:"center"}).setLngLat([d.lng,d.lat]).addTo(map);state.districtMarkers.push(marker);
+          });
+          map.addSource("project-data",{type:"geojson",data:{type:"FeatureCollection",features:OBJECTS.map(o=>({type:"Feature",properties:{name:o.name,district:o.district,category:o.category,color:o.color},geometry:{type:"Point",coordinates:[o.lng,o.lat]}}))}});
+          map.addLayer({id:"project-points",type:"circle",source:"project-data",layout:{visibility:"none"},paint:{"circle-radius":6,"circle-color":["get","color"],"circle-stroke-color":"#e9fbff","circle-stroke-width":1.3,"circle-opacity":.92}});
+          map.addLayer({id:"project-labels",type:"symbol",source:"project-data",layout:{visibility:"none","text-field":["get","name"],"text-size":10,"text-offset":[0,1.25],"text-allow-overlap":false},paint:{"text-color":"#eaf8ff","text-halo-color":"#0b131e","text-halo-width":1.5}});
+          map.addSource("green-data",{type:"geojson",data:{type:"FeatureCollection",features:DISTRICTS.map(d=>({type:"Feature",properties:{name:"Зелёный контур · "+d.name},geometry:{type:"Point",coordinates:[d.lng-.006,d.lat-.004]}}))}});
+          map.addLayer({id:"green-areas",type:"circle",source:"green-data",layout:{visibility:"none"},paint:{"circle-radius":10,"circle-color":"#36d6a3","circle-opacity":.35,"circle-stroke-color":"#36d6a3","circle-stroke-width":1}});
+          map.addSource("incident-data",{type:"geojson",data:incidentGeoJSON()});
+          map.addLayer({id:"incident-points",type:"circle",source:"incident-data",layout:{visibility:"none"},paint:{"circle-radius":["match",["get","priority"],"Критический",9,"Высокий",7,5],"circle-color":["match",["get","priority"],"Критический","#ff536d","Высокий","#ffbf5b","#00d2ff"],"circle-stroke-color":"#fff","circle-stroke-width":1.5,"circle-opacity":.93}});
+          const showDistrictPopup=event=>{
+            const feature=event.features&&event.features[0];if(!feature)return;focusDistrict(feature.properties.name,false);
+            const lens=LENSES[state.lens],value=Number(feature.properties[lens.key]);
+            const formatted=lens.key==="congestion"?value.toFixed(1)+" /10":value.toFixed(1)+" "+lens.unit;
+            new maplibregl.Popup({closeButton:true,offset:8}).setLngLat(event.lngLat).setHTML("<b>"+esc(feature.properties.name)+"</b><br>"+esc(lens.legend)+": <strong>"+formatted+"</strong><br><small>Локальная демонстрационная модель</small>").addTo(map);
+          };
+          map.on("click","districts-extrusion",showDistrictPopup);
+          map.on("click","district-choropleth",showDistrictPopup);
+          map.on("click","incident-points",event=>{
+            const p=event.features&&event.features[0]&&event.features[0].properties;if(!p)return;
+            new maplibregl.Popup({closeButton:true,offset:10}).setLngLat(event.lngLat).setHTML("<b>"+esc(p.title)+"</b><br>"+esc(p.district)+" · "+esc(p.priority)+"<br>"+esc(p.status)+"<br><small>"+esc(p.source)+" · "+(p.days==0?"срок сегодня":"реакция до "+p.days+" дн.")+"</small>").addTo(map);
+          });
+          map.on("click","project-points",event=>{
+            const p=event.features&&event.features[0]&&event.features[0].properties;if(!p)return;
+            new maplibregl.Popup({closeButton:true,offset:8}).setLngLat(event.lngLat).setHTML("<b>"+esc(p.name)+"</b><br>"+esc(p.district)+" · "+esc(p.category)+"<br><small>Источник: демонстрационный слой объектов</small>").addTo(map);
+          });
+          ["districts-extrusion","incident-points","project-points"].forEach(id=>{map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",id,()=>map.getCanvas().style.cursor="")});
+          map.resize();updateMapData();setLayer(state.activeLayer);
+        });
+      }catch(error){showMapError("MapLibre не запустился: "+(error&&error.message?error.message:"неизвестная ошибка")+". Локальные расчёты доступны.");}
+    }
+
+    // БЛОК 3. Казначейство, обращения и элементы управления сценариями.
+    function initSelectors(){
+      [$("#district-select"),$("#new-case-district")].forEach(select=>{
+        DISTRICTS.forEach(d=>{const option=document.createElement("option");option.value=d.name;option.textContent=d.name;select.append(option)});
+      });
+      $("#district-select").value=DISTRICTS[0].name;state.focus=DISTRICTS[0].name;
+    }
+    function initEvents(){
+      $("#budget-mode").addEventListener("change",event=>{
+        const previous=state.mode;state.mode=event.target.value;
+        if(state.mode==="amount"&&previous==="percent")state.raw=Object.fromEntries(SECTORS.map(s=>[s.key,CITY_BUDGET*state.shares[s.key]/100]));
+        if(state.mode==="percent"&&previous==="amount")state.raw={...state.shares};
+        renderBudgetControls();recalculate();
+      });
+      $("#horizon-select").addEventListener("change",event=>{state.horizon=Number(event.target.value);recalculate()});
+      $("#district-select").addEventListener("change",event=>focusDistrict(event.target.value,false));
+      $("#lens-select").addEventListener("change",event=>setLens(event.target.value));
+      $$("#project-list input").forEach(input=>input.addEventListener("change",()=>{
+        const id=input.dataset.project;
+        if(input.checked&&!state.projectIds.includes(id))state.projectIds.push(id);
+        if(!input.checked)state.projectIds=state.projectIds.filter(value=>value!==id);
+        const total=state.projectIds.reduce((sum,projectId)=>sum+PROJECTS[projectId].amount,0);
+        if(total>PROJECT_LIMIT){input.checked=false;state.projectIds=state.projectIds.filter(value=>value!==id);toast("Выбранные проекты превышают лимит 120 млрд ₸.");}
+        renderProjectTotals();recalculate();
+      }));
+      $("#run-scenario").addEventListener("click",()=>{recalculate();toast("Сценарий пересчитан локальной моделью.")});
+      $$(".layer").forEach(button=>button.addEventListener("click",()=>setLayer(button.dataset.layer)));
+      $$(".tab").forEach(button=>button.addEventListener("click",()=>{
+        $$(".tab").forEach(item=>item.classList.toggle("active",item===button));
+        $$(".pane").forEach(pane=>pane.classList.toggle("active",pane.id==="pane-"+button.dataset.tab));
+        if(button.dataset.tab==="treasury")renderPayments();
+        if(button.dataset.tab==="cases")renderCases();
+        if(state.mapReady)setTimeout(()=>state.map.resize(),80);
+      }));
+      $("#horizon-select").addEventListener("change",event=>{state.horizon=Number(event.target.value);recalculate()});
+      $("#add-case").addEventListener("click",()=>{
+        const title=$("#new-case-title").value.trim();if(!title){toast("Введите тему обращения.");$("#new-case-title").focus();return}
+        const districtName=$("#new-case-district").value,district=DISTRICTS.find(d=>d.name===districtName);
+        CASES.unshift({id:"109-"+(2408+CASES.length),district:districtName,title,priority:$("#new-case-priority").value,status:"Зарегистрировано",source:"Демо · локальная запись",days:3,lng:district.lng,lat:district.lat});
+        $("#new-case-title").value="";recalculate();renderCases();setLayer(state.activeLayer);toast("Обращение добавлено в локальный список.");
+      });
+      $("#tilt").addEventListener("click",()=>{if(state.mapReady)state.map.easeTo({pitch:state.map.getPitch()>25?0:54,duration:450})});
+      $("#home").addEventListener("click",()=>{if(state.mapReady)state.map.flyTo({center:[71.4304,51.155],zoom:10.9,pitch:54,bearing:-15,duration:650})});
+      $("#district-toggle").addEventListener("click",toggleDistrictDivisions);
+      window.addEventListener("resize",()=>{if(state.mapReady)state.map.resize()});
+    }
+
+    // БЛОК 4. Инициализация карты и синхронизация GIS-слоёв.
+    // БЛОК 5. Казначейские транши и статусы задаются выше локальными данными.
+    // БЛОК 6. XAI-анализ пересчитывается вместе с районными показателями.
+    initSelectors();
+    renderBudgetControls();
+    state.baseline=calculateDistricts(DEFAULT_RAW,1,false);
+    state.baselineStats=summarize(state.baseline);
+    initEvents();
+    renderPayments();
+    renderCases();
+    recalculate();
+    initMap();
+  })();
+  </script>
+</body>
+</html>

@@ -181,4 +181,9 @@ def frontend():
     return FileResponse(ROOT / "index.html")
 
 
+@app.get("/real-city.html")
+def static_prototype():
+    return FileResponse(ROOT / "real-city.html")
+
+
 app.mount("/src", StaticFiles(directory=ROOT / "src"), name="src")
